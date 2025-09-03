@@ -1,0 +1,40 @@
+Stock News Monitor
+This is a simple command-line tool that monitors a stock's intraday price movements. When the price changes by more than a specified threshold (e.g., 5%), it fetches and displays the latest news headlines related to that company. This is designed to help traders and investors quickly spot why a stock might be moving significantly.
+
+Features
+Monitors a single stock by its ticker symbol.
+
+Uses a real-time stock price API to check for price fluctuations.
+
+Uses a news API to get relevant headlines.
+
+The price change threshold is easily configurable.
+
+Setup
+Get API Keys: You will need API keys from a stock price provider and a news provider.
+
+Stock Price API: We recommend using a service like Alpha Vantage or Finnhub.
+
+News API: We recommend using a service like NewsAPI.org.
+
+Install Dependencies: This project requires the requests library to make HTTP calls to the APIs.
+
+pip install requests
+
+Configure API Keys: Create a file named config.py in the same directory as the main script and add your API keys there. Do not commit this file to a public repository.
+
+# config.py
+STOCK_API_KEY = "YOUR_ALPHA_VANTAGE_API_KEY"
+NEWS_API_KEY = "YOUR_NEWSAPI_ORG_API_KEY"
+
+Usage
+Run the main script from your terminal, providing the ticker symbol and monitoring interval in seconds.
+
+python stock_monitor.py AAPL
+
+You can optionally specify the monitoring interval in seconds and the price threshold:
+
+python stock_monitor.py TSLA --interval 300 --threshold 7
+
+Disclaimer
+This is a simplified tool for educational purposes. It uses free API tiers which may have rate limits. The price and news data are provided by third-party services and may not be suitable for live trading decisions.
