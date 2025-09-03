@@ -1,0 +1,116 @@
+import requests
+import time
+import sys
+import argparse
+from config import STOCK_API_KEY, NEWS_API_KEY
+
+def get_current_price(ticker):
+    """
+    Fetches the current price of a stock using the Alpha Vantage API.
+    
+    Args:
+        ticker (str): The stock ticker symbol.
+        
+    Returns:
+        float: The current stock price, or None if the request fails.
+    """
+    url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={STOCK_API_KEY}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
+        data = response.json()
+        
+        # Check if the API returned an error message or if data is missing
+        if "Global Quote" in data and len(data["Global Quote"]) > 0:
+            price = float(data["Global Quote"]["05. price"])
+            return price
+        else:
+            print(f"Error: Could not retrieve stock data for {ticker}. Check the ticker symbol or API key.")
+            print("API Response:", data)
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching stock price: {e}")
+        return None
+    except (ValueError, KeyError) as e:
+        print(f"Error parsing JSON data from API: {e}")
+        return None
+
+def get_news_headlines(query):
+    """
+    Fetches the latest news headlines using the NewsAPI.org API.
+    
+    Args:
+        query (str): The search query (e.g., stock ticker or company name).
+        
+    Returns:
+        list: A list of news article dictionaries, or an empty list if the request fails.
+    """
+    url = f"https://newsapi.org/v2/everything?q={query}&apiKey={NEWS_API_KEY}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        if data["status"] == "ok":
+            return data["articles"]
+        else:
+            print(f"Error: Could not retrieve news. API status: {data['status']}")
+            return []
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching news headlines: {e}")
+        return []
+
+def monitor_stock(ticker, threshold, interval):
+    """
+    Monitors a stock's price for significant intraday movement and fetches news.
+    
+    Args:
+        ticker (str): The stock ticker symbol.
+        threshold (float): The percentage change threshold to trigger a news fetch.
+        interval (int): The monitoring interval in seconds.
+    """
+    initial_price = get_current_price(ticker)
+    if initial_price is None:
+        print("Initial price could not be retrieved. Exiting.")
+        return
+        
+    print(f"Monitoring {ticker} for price changes of more than {threshold}%...")
+    print(f"Initial Price: ${initial_price:.2f}")
+
+    while True:
+        time.sleep(interval)
+        current_price = get_current_price(ticker)
+        
+        if current_price is None:
+            continue
+            
+        # Calculate the percentage change since the initial price
+        percentage_change = ((current_price - initial_price) / initial_price) * 100
+        
+        print(f"Current Price: ${current_price:.2f} | Change: {percentage_change:.2f}%")
+        
+        if abs(percentage_change) >= threshold:
+            print("\n--- Significant price movement detected! ---")
+            print(f"Price of {ticker} changed by {percentage_change:.2f}%")
+            
+            headlines = get_news_headlines(ticker)
+            if headlines:
+                print(f"\nRecent headlines for {ticker}:")
+                for i, article in enumerate(headlines[:5]):  # Show up to 5 headlines
+                    print(f"{i+1}. {article['title']} ({article['source']['name']})")
+                    print(f"   URL: {article['url']}")
+            else:
+                print("No recent news headlines found.")
+                
+            print("\n-------------------------------------------")
+            # Reset the initial price to the current price after a news event
+            initial_price = current_price
+            
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Monitor a stock's price and fetch news on significant movement.")
+    parser.add_argument("ticker", help="The stock ticker symbol to monitor (e.g., 'AAPL', 'TSLA').")
+    parser.add_argument("--threshold", type=float, default=5.0, help="The percentage change threshold to trigger a news fetch (default: 5.0).")
+    parser.add_argument("--interval", type=int, default=300, help="The monitoring interval in seconds (default: 300).")
+    
+    args = parser.parse_args()
+    
+    monitor_stock(args.ticker, args.threshold, args.interval)
